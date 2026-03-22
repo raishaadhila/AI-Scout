@@ -43,11 +43,19 @@ async def get_api() -> API:
     api = API()
     accounts = await api.pool.get_all()
     if not accounts:
-        cookies = "x_cookies.json" if os.path.exists("x_cookies.json") else None
+        import json
+        with open("x_cookies.json") as f:
+            cookies = json.load(f)
+
+        cookies=json.dumps({c["name"]: c["value"] for c in cookies})
+
         await api.pool.add_account(
-            TWSCRAPE_USERNAME, TWSCRAPE_PASSWORD, TWSCRAPE_EMAIL, TWSCRAPE_PASSWORD,
+            username=TWSCRAPE_USERNAME,
+            password=TWSCRAPE_PASSWORD,
+            email=TWSCRAPE_EMAIL,
             cookies=cookies
         )
+        
         await api.pool.login_all()
         print("twscrape: account logged in.")
     return api

@@ -2,6 +2,7 @@ import asyncio
 from twitter_search import init_db, collect, get_latest_tweets
 from gemini_summary import summarize
 from bot import send_report
+from config import TELEGRAM_CHAT_ID
 
 async def run_pipeline():
     # 1. Init DB
@@ -17,7 +18,7 @@ async def run_pipeline():
     summaries = summarize(tweets)
 
     # 4. Send to Telegram
-    await send_report(summaries)
+    await send_report(summaries, TELEGRAM_CHAT_ID)
 
 if __name__ == "__main__":
     asyncio.run(run_pipeline())
