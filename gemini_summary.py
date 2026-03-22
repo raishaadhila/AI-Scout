@@ -3,35 +3,35 @@ from config import GEMINI_API_KEY
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-SYSTEM_PROMPT = """You are an AI news analyst. You will receive a list of tweets numbered from 1 to N.
-Your job is to summarize each tweet into one concise sentence in the SAME ORDER as the input.
+SYSTEM_PROMPT = """You are an AI news analyst. You will receive a list of news articles numbered from 1 to N.
+Your job is to summarize each article into one concise sentence in the SAME ORDER as the input.
 Output format (strictly follow this):
-1. [summary of tweet 1]
-2. [summary of tweet 2]
+1. [summary of article 1]
+2. [summary of article 2]
 ...and so on.
-Do NOT merge, skip, or reorder any tweet. One summary per tweet, same numbering."""
+Do NOT merge, skip, or reorder any article. One summary per article, same numbering."""
 
-def summarize(tweets: list[tuple[str, str, str]]) -> list[tuple[str, str]]:
+def summarize(articles: list[tuple[str, str, str, str]]) -> list[tuple[str, str]]:
     """
-    tweets: list of (keyword, content, url)
+    articles: list of (keyword, title, description, url)
     returns: list of (summary, url) in same order
     """
-    if not tweets:
+    if not articles:
         return []
 
     numbered = "\n".join(
-        f"{i+1}. [{kw}] {content}" for i, (kw, content, url) in enumerate(tweets)
+        f"{i+1}. [{kw}] {title}: {description}" for i, (kw, title, description, url) in enumerate(articles)
     )
-    prompt = f"{SYSTEM_PROMPT}\n\nTweets:\n{numbered}"
+    prompt = f"{SYSTEM_PROMPT}\n\nArticles:\n{numbered}"
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-1.5-flash",
         contents=prompt
     )
     lines = [l.strip() for l in response.text.strip().split("\n") if l.strip()]
 
     summaries = []
-    for i, (_, _, url) in enumerate(tweets):
+    for i, (_, _, _, url) in enumerate(articles):
         summary = lines[i] if i < len(lines) else f"{i+1}. (no summary)"
         summaries.append((summary, url))
     return summaries

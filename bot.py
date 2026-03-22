@@ -1,29 +1,48 @@
 from telegram import Bot, Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 from config import TELEGRAM_BOT_TOKEN
-from twitter_search import get_latest_tweets
-from gemini_summary import summarize
+from news_collector import get_latest_articles
 
 async def send_report(summaries: list[tuple[str, str]], chat_id: str):
-    lines = []
-    for summary, url in summaries:
-        lines.append(f"{summary}\n   🔗 {url}")
-    message = "🤖 *AI-Scout Report*\n\n" + "\n\n".join(lines)
-
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    await bot.send_message(chat_id=chat_id, text=message, parse_mode="Markdown")
+    chunk = []
+    current_len = 0
+
+    for summary, url in summaries:
+        line = f"{summary}\n   🔗 {url}\n"
+        if current_len + len(line) > 3800:
+            message = "🤖 <b>AI-Scout Report</b>\n\n" + "\n".join(chunk)
+            await bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
+            chunk = []
+            current_len = 0
+        chunk.append(line)
+        current_len += len(line)
+
+    if chunk:
+        message = "🤖 <b>AI-Scout Report</b>\n\n" + "\n".join(chunk)
+        await bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
+
     print("Report sent to Telegram.")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    tweets = get_latest_tweets(limit=20)
-    if not tweets:
+    articles = get_latest_articles(limit=20)
+    if not articles:
         await update.message.reply_text("Belum ada data. Tunggu jadwal scraping berikutnya.")
         return
 
-    summaries = summarize(tweets)
-    lines = [f"{summary}\n   🔗 {url}" for summary, url in summaries]
-    message = "🤖 *AI-Scout Latest Data*\n\n" + "\n\n".join(lines)
-    await update.message.reply_text(message, parse_mode="Markdown")
+    chunk = []
+    current_len = 0
+    for _, title, description, url in articles:
+        line = f"<b>{title}</b>\n{description}\n   🔗 {url}\n"
+        if current_len + len(line) > 3800:
+            await update.message.reply_text("🤖 <b>AI-Scout Latest Data</b>\n\n" + "\n".join(chunk), parse_mode="HTML")
+            chunk = []
+            current_len = 0
+        chunk.append(line)
+        current_len += len(line)
+
+    if chunk:
+        await update.message.reply_text("🤖 <b>AI-Scout Latest Data</b>\n\n" + "\n".join(chunk), parse_mode="HTML")
 
 def run_bot():
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
